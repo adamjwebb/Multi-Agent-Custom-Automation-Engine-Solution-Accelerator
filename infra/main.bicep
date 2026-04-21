@@ -34,6 +34,7 @@ param location string
 //Get the current deployer's information
 var deployerInfo = deployer()
 var deployingUserPrincipalId = deployerInfo.objectId
+var isDeployerSameAsAppIdentity = deployingUserPrincipalId == userAssignedIdentity.outputs.principalId
 
 // Restricting deployment to only supported Azure OpenAI regions validated with GPT-4o model
 @allowed(['australiaeast', 'canadaeast', 'eastus2', 'francecentral', 'japaneast', 'norwayeast', 'swedencentral', 'uksouth', 'westus'])
@@ -939,7 +940,7 @@ module aiFoundryAiServices 'br:mcr.microsoft.com/bicep/avm/res/cognitive-service
       ipRules: []
     }
     managedIdentities: { userAssignedResourceIds: [userAssignedIdentity!.outputs.resourceId] } //To create accounts or projects, you must enable a managed identity on your resource
-    roleAssignments: [
+    roleAssignments: concat([
       {
         roleDefinitionIdOrName: '53ca6127-db72-4b80-b1b0-d745d6d5456d' // Azure AI User
         principalId: userAssignedIdentity.outputs.principalId
@@ -955,6 +956,7 @@ module aiFoundryAiServices 'br:mcr.microsoft.com/bicep/avm/res/cognitive-service
         principalId: userAssignedIdentity.outputs.principalId
         principalType: 'ServicePrincipal'
       }
+    ], isDeployerSameAsAppIdentity ? [] : [
       {
         roleDefinitionIdOrName: '53ca6127-db72-4b80-b1b0-d745d6d5456d' // Azure AI User
         principalId: deployingUserPrincipalId
@@ -965,7 +967,7 @@ module aiFoundryAiServices 'br:mcr.microsoft.com/bicep/avm/res/cognitive-service
         principalId: deployingUserPrincipalId
         principalType: deployerPrincipalType
       }
-    ]
+    ])
     // WAF aligned configuration for Monitoring
     diagnosticSettings: enableMonitoring ? [{ workspaceResourceId: logAnalyticsWorkspaceResourceId }] : null
     publicNetworkAccess: enablePrivateNetworking ? 'Disabled' : 'Enabled'
@@ -1078,10 +1080,11 @@ module cosmosDb 'br/public:avm/res/document-db/database-account:0.15.0' = {
           'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/*'
           'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers/items/*'
         ]
-        assignments: [
+        assignments: concat([
           { principalId: userAssignedIdentity.outputs.principalId }
+        ], isDeployerSameAsAppIdentity ? [] : [
           { principalId: deployingUserPrincipalId }
-        ]
+        ])
       }
     ]
     // WAF aligned configuration for Monitoring
@@ -1577,18 +1580,19 @@ module avmStorageAccount 'br/public:avm/res/storage/storage-account:0.20.0' = {
     accessTier: 'Hot'
     supportsHttpsTrafficOnly: true
 
-    roleAssignments: [
+    roleAssignments: concat([
       {
         principalId: userAssignedIdentity.outputs.principalId
         roleDefinitionIdOrName: 'Storage Blob Data Contributor'
         principalType: 'ServicePrincipal'
       }
+    ], isDeployerSameAsAppIdentity ? [] : [
       {
         principalId: deployingUserPrincipalId
         roleDefinitionIdOrName: 'Storage Blob Data Contributor'
         principalType: deployerPrincipalType
       }
-    ]
+    ])
 
     // WAF aligned networking
     networkAcls: {
@@ -1705,16 +1709,11 @@ module searchServiceUpdate 'br/public:avm/res/search/search-service:0.11.1' = {
     replicaCount: 1
     sku: enableScalability ? 'standard' : 'basic'
     tags: tags
-    roleAssignments: [
+    roleAssignments: concat([
       {
         principalId: userAssignedIdentity.outputs.principalId
         roleDefinitionIdOrName: 'Search Index Data Contributor'
         principalType: 'ServicePrincipal'
-      }
-      {
-        principalId: deployingUserPrincipalId
-        roleDefinitionIdOrName: 'Search Index Data Contributor'
-        principalType: deployerPrincipalType
       }
       {
         principalId: aiFoundryAiProjectPrincipalId
@@ -1726,7 +1725,13 @@ module searchServiceUpdate 'br/public:avm/res/search/search-service:0.11.1' = {
         roleDefinitionIdOrName: 'Search Service Contributor'
         principalType: 'ServicePrincipal'
       }
-    ]
+    ], isDeployerSameAsAppIdentity ? [] : [
+      {
+        principalId: deployingUserPrincipalId
+        roleDefinitionIdOrName: 'Search Index Data Contributor'
+        principalType: deployerPrincipalType
+      }
+    ])
 
     //Removing the Private endpoints as we are facing the issue with connecting to search service while comminicating with agents
 
