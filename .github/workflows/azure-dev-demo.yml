@@ -16,7 +16,7 @@ jobs:
       AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
       AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       AZURE_LOCATION: ${{ vars.AZURE_LOCATION }}
-      AZURE_ENV_OPENAI_LOCATION : ${{ vars.AZURE_AI_DEPLOYMENT_LOCATION }}
+      AZURE_ENV_OPENAI_LOCATION: ${{ vars.AZURE_AI_DEPLOYMENT_LOCATION }}
       AZURE_ENV_MODEL_CAPACITY: 1
       AZURE_ENV_MODEL_4_1_CAPACITY: 1
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -24,11 +24,6 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-
-      - name: Set timestamp and env name
-        run: |
-          HHMM=$(date -u +'%H%M')
-          echo "AZURE_ENV_NAME=azd-${{ vars.AZURE_ENV_NAME }}-${HHMM}" >> $GITHUB_ENV
 
       - name: Install azd
         uses: Azure/setup-azd@v2
@@ -51,9 +46,8 @@ jobs:
       - name: Provision and Deploy
         shell: bash
         run: |
-          if ! azd env select "$AZURE_ENV_NAME"; then
-            azd env new "$AZURE_ENV_NAME" --subscription "$AZURE_SUBSCRIPTION_ID" --location "$AZURE_LOCATION" --no-prompt
-          fi
+          azd env new demo --subscription "$AZURE_SUBSCRIPTION_ID" --location "$AZURE_LOCATION" --no-prompt
+          azd env set AZURE_RESOURCE_GROUP=rg-demo
           azd config set defaults.subscription "$AZURE_SUBSCRIPTION_ID"
           azd env set AZURE_ENV_OPENAI_LOCATION="$AZURE_ENV_OPENAI_LOCATION"
           azd up --no-prompt
