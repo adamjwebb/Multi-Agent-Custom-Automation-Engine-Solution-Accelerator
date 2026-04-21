@@ -33,6 +33,7 @@
       "type": "string",
       "allowedValues": [
         "australiaeast",
+        "canadacentral",
         "centralus",
         "eastasia",
         "eastus2",
@@ -52,6 +53,7 @@
       "type": "string",
       "allowedValues": [
         "australiaeast",
+        "canadaeast",
         "eastus2",
         "francecentral",
         "japaneast",
